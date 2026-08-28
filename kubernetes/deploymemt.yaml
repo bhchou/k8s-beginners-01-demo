@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: python-demo
+  namespace: k8s-demo
+
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: python-demo
+
+  template:
+    metadata:
+      labels:
+        app: python-demo
+
+    spec:
+      containers:
+        - name: python-demo
+          image: docker.io/bhchoudev/python-demo-k8s-beginners-01:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_VERSION
+              value: "1.0"
