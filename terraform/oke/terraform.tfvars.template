@@ -1,0 +1,19 @@
+tenancy_ocid = <Oracle Tanecy OCID>
+user_ocid    = <Your OCID>
+private_key  = <Full path for private key to access OCI API>
+fingerprint  = <Fingerprint for key can be found on the OCI API key page Oracle Cloud Console>
+region       = <Your Region for doing things>
+compartment_id = <Compartment ID where VCN resides>
+network_compartment_id = <compartment id for VCN>
+cluster_compartment_id = <compartment id for cluster>
+vcn_name = <vcn name>
+k8s_name = <cluster name>
+k8s_pods_cidr = <cluster pods cidr>
+k8s_services_cidr = <cluster service cidr>
+k8s_np_name = <cluster node pool name>
+k8s_node_shape = {
+    spec = <node shape>
+    memory = <node memory in GB>
+    ocpus = <CPU number>
+}
+k8s_node_ssh_public_key = <public ssh public key string for managing nodes>

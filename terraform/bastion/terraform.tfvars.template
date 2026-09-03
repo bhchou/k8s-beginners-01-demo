@@ -1,0 +1,26 @@
+tenancy_ocid = <Oracle Tanecy OCID>
+user_ocid    = <Your OCID>
+private_key  = <Full path for private key to access OCI API>
+fingerprint  = <Fingerprint for key can be found on the OCI API key page Oracle Cloud Console>
+region       = <Your Region for doing things>
+compartment_id = <Compartment ID where VCN resides>
+vcn_name = <VCN NAME>
+ssh_public_key = <PUBLIC KEY STRING FOR CONNECTING TO BASTION SESSION>
+cluster_compartment_id = <OCID for compartment where k8s resides>
+k8s_name = <k8s cluster name>
+
+# parameters for bastion
+
+bastionsrv_name = <bastion service name>
+bastion_type = <type of bastion>
+bastion_cidr_allow_list = <cdir lists which are allowed to connect to session>
+
+freeform_tags = <map for bastion creation freeform tags>
+
+# bastion session
+instances = <maps for instances to create sessions>
+ex.
+instance = {
+  x = { ip = "10.0.a.b", port = "22" },
+  y = { ip = "10.0.c.d", port = "22" }
+}
