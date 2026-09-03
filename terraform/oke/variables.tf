@@ -26,9 +26,10 @@ variable "vcn_name" {
   type        = string
   description = "vcn name"
 }
-variable "subnet_name" {
+variable "oke_subnet_cidr" {
+  description = "CIDR block for the OKE private subnet"
   type        = string
-  description = "vcn subnet name"
+  default     = "10.0.10.0/24"
 }
 variable "k8s_name" {
   type        = string
@@ -42,37 +43,21 @@ variable "k8s_services_cidr" {
   type        = string
   description = "k8s service cidr"
 }
-variable "k8s_node_shape" {
-  type        = map
-  default = {
-    spec = ""
-    memory = 1
-    ocpus = 1
-  }
-}
-#variable "k8s_node_ssh_public_key" {
-#  type         = string
-#  description  = "ssh public key for administrate nodes"
-#}
-
 variable "k8s_version" {
   description = "Kubernetes version supported by OKE"
   type        = string
   default     = "v1.36.1"
 }
-
 variable "node_pool_name" {
   description = "OKE managed node pool name"
   type        = string
   default     = "demo-k8s-node-pool"
 }
-
 variable "node_count" {
   description = "Number of worker nodes"
   type        = number
   default     = 2
 }
-
 variable "node_ssh_public_key_path" {
   description = "SSH public key for worker nodes"
   type        = string

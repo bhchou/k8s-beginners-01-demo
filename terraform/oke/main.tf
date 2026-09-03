@@ -24,27 +24,133 @@ data "oci_core_vcns" "demo" {
 }
 
 locals {
-  vcn_id = data.oci_core_vcns.demo.virtual_networks[0].id
+  vcn_id   = data.oci_core_vcns.demo.virtual_networks[0].id
+  vcn_cidr = data.oci_core_vcns.demo.virtual_networks[0].cidr_block
+}
+
+###############################################################################
+# OKE Private Network
+###############################################################################
+
+#
+# Oracle Services Network
+#
+# Used by the Service Gateway so OKE worker nodes can reach OCI services
+# without going through the public Internet.
+#
+data "oci_core_services" "all_services" {
+  filter {
+    name   = "name"
+    values = ["All .* Services In Oracle Services Network"]
+    regex  = true
+  }
 }
 
 
-# public-subnet
 #
-# NOTE:
-# The subnet keeps the name used in the previous IaC lesson.
-# Despite the name "public-subnet", instances in this subnet do not receive
-# public IP addresses.
-
-data "oci_core_subnets" "oke" {
+# NAT Gateway
+#
+# Provides outbound Internet access for OKE worker nodes.
+#
+resource "oci_core_nat_gateway" "oke" {
   compartment_id = local.compartment_id
   vcn_id         = local.vcn_id
-  display_name   = var.subnet_name
+  display_name   = "oke-nat-gateway"
+}
+
+
+#
+# Service Gateway
+#
+# Provides private access to Oracle Services Network.
+#
+resource "oci_core_service_gateway" "oke" {
+  compartment_id = local.compartment_id
+  vcn_id         = local.vcn_id
+  display_name   = "oke-service-gateway"
+
+  services {
+    service_id = data.oci_core_services.all_services.services[0].id
+  }
+}
+
+
+#
+# OKE Route Table
+#
+resource "oci_core_route_table" "oke" {
+  compartment_id = local.compartment_id
+  vcn_id         = local.vcn_id
+  display_name   = "oke-route-table"
+
+  route_rules {
+    destination       = "0.0.0.0/0"
+    destination_type  = "CIDR_BLOCK"
+    network_entity_id = oci_core_nat_gateway.oke.id
+  }
+
+  route_rules {
+    destination       = data.oci_core_services.all_services.services[0].cidr_block
+    destination_type  = "SERVICE_CIDR_BLOCK"
+    network_entity_id = oci_core_service_gateway.oke.id
+  }
+}
+
+
+#
+# OKE Security List
+#
+# For this introductory lab we intentionally keep the rules simple:
+#
+#   - allow traffic inside the VCN
+#   - allow all outbound traffic
+#
+# Production environments should restrict these rules according to
+# the official OKE network requirements.
+#
+resource "oci_core_security_list" "oke" {
+  compartment_id = local.compartment_id
+  vcn_id         = local.vcn_id
+  display_name   = "oke-security-list"
+
+  ingress_security_rules {
+    protocol = "all"
+    source   = local.vcn_cidr
+  }
+
+  egress_security_rules {
+    protocol    = "all"
+    destination = "0.0.0.0/0"
+  }
+}
+
+
+#
+# OKE Private Subnet
+#
+resource "oci_core_subnet" "oke" {
+  compartment_id = local.compartment_id
+  vcn_id         = local.vcn_id
+
+  display_name = "oke-subnet"
+  dns_label    = "oke"
+
+  cidr_block = var.oke_subnet_cidr
+
+  prohibit_public_ip_on_vnic = true
+
+  route_table_id = oci_core_route_table.oke.id
+
+  security_list_ids = [
+    oci_core_security_list.oke.id
+  ]
 }
 
 
 locals {
-  oke_subnet_id = data.oci_core_subnets.oke.subnets[0].id
+  oke_subnet_id = oci_core_subnet.oke.id
 }
+
 
 ###############################################################################
 # Availability Domains
@@ -70,7 +176,7 @@ data "oci_identity_availability_domains" "ads" {
 data "oci_containerengine_node_pool_option" "oke" {
   node_pool_option_id = "all"
 
-  compartment_id       = local.compartment_id
+  compartment_id        = local.compartment_id
   node_pool_k8s_version = var.k8s_version
   node_pool_os_arch     = var.node_arch
 }
@@ -116,11 +222,11 @@ resource "oci_containerengine_cluster" "demo" {
   cluster_pod_network_options {
     cni_type = "FLANNEL_OVERLAY"
   }
-  
+
   options {
     kubernetes_network_config {
       pods_cidr     = var.k8s_pods_cidr
-      services_cidr = var.k8s_services_cidr 
+      services_cidr = var.k8s_services_cidr
     }
   }
 }
@@ -134,7 +240,7 @@ resource "oci_containerengine_node_pool" "demo" {
   node_shape         = var.node_shape
 
   node_shape_config {
-    ocpus = var.node_ocpus
+    ocpus         = var.node_ocpus
     memory_in_gbs = var.node_memory_gb
   }
 
@@ -150,10 +256,6 @@ resource "oci_containerengine_node_pool" "demo" {
     size = var.node_count
   }
 
-// find available image id: 
-// oci ce node-pool-options get --node-pool-option-id all
-// "Allow group <group> to inspect instance-family in tenancy"
-// using Oracle-Linux-8.6-aarch64-2022.05.30-0
   node_source_details {
     image_id    = local.oke_image_id
     source_type = "image"
